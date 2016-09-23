@@ -1,0 +1,22 @@
+letsencrypt-nginx:
+  tty: true
+  image: nginx:alpine
+  stdin_open: true
+  volumes:
+    - letsencrypt-verify:/usr/share/nginx/html/
+  labels:
+    io.rancher.sidekicks: rancher-lets-encrypt
+
+rancher-lets-encrypt:
+  tty: true
+  image: rancher-lets-encrypt
+  stdin_open: true
+  env_file:
+    - letsencrypt.env
+  volumes:
+    - letsencrypt-verify:/var/www/
+    - letsencrypt-certs:/etc/letsencrypt/
+  labels:
+    # if we add the container as a rancher agent, we get magical things like Rancher server URL, and access keys for F-R-E-E!
+    io.rancher.container.create_agent: 'true'
+    io.rancher.container.agent.role: environment

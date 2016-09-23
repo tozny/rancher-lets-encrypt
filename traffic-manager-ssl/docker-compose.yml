@@ -1,0 +1,12 @@
+traffic-manager-443:
+  ports:
+  - 443:80
+  external_links:
+  - mystack/myapp:myapp
+  labels:
+    io.rancher.scheduler.global: 'true'
+    io.rancher.loadbalancer.ssl.ports: '443'
+    io.rancher.loadbalancer.target.mystack/myapp: somedomain.example.com:443=8080
+  tty: true
+  image: rancher/load-balancer-service
+  stdin_open: true

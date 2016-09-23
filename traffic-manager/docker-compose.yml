@@ -1,0 +1,19 @@
+traffic-manager-80:
+  ports:
+  - 80:80
+  external_links:
+  - lets-encrypt/letsencrypt-nginx:letsencrypt-nginx
+  labels:
+    io.rancher.scheduler.global: 'true'
+    io.rancher.loadbalancer.target.redirect/redirect: yourdomain.example.com:80=80
+    io.rancher.loadbalancer.target.lets-encrypt/letsencrypt-nginx: yourdomain.example.com:80/.well-known/=80,anotherdomain.example.com:80/.well-known/=80
+  tty: true
+  image: rancher/load-balancer-service
+  stdin_open: true
+  links:
+    - redirect:redirect
+
+redirect:
+  image: tozny/docker-redirector
+  tty: true
+  stdin_open: true

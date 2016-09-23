@@ -1,0 +1,14 @@
+traffic-manager-443:
+  load_balancer_config:
+    haproxy_config:
+        defaults: |-
+            option httpclose
+  default_cert: somedomain.example.com
+  certs:
+    - anotherdomain.example.com
+  health_check:
+    port: 42
+    interval: 2000
+    unhealthy_threshold: 3
+    healthy_threshold: 2
+    response_timeout: 2000
