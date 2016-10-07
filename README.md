@@ -14,7 +14,7 @@ The service launches two containers:
 - `letsencrypt-nginx`
 - `letsencrypt-python`
 
-The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `letsencrypt-python` service container. This way the `letsencrypt-python` container can add ACME challenges to the `<host>/.well-known/acme-challenges/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime. 
+The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `letsencrypt-python` service container. This way the `letsencrypt-python` container can add ACME challenges to the `<host>/.well-known/acme-challenge/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime. 
 
 ## Requirements
 
@@ -24,7 +24,7 @@ The `letsencrypt-nginx` container is stock nginx, but shares the webroot with th
 
 ## How to use
 
-Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. Use `rancher-compose up` to launch the stack in rancher. **In order to get a Let's Encrypt Production certificate, you must set the environment variable STAGING=False**. This will then tell the service to use the production Let's Encrypt api instead of the staging api.
+Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/acme-challenge/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. Use `rancher-compose up` to launch the stack in rancher. **In order to get a Let's Encrypt Production certificate, you must set the environment variable STAGING=False**. This will then tell the service to use the production Let's Encrypt api instead of the staging api.
 
 # Certificate Workflows
 
