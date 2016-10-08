@@ -367,12 +367,12 @@ class RancherService:
                     print "Hostname: {0} resolves".format(host)
                     if(self.port_open(host, HOST_CHECK_PORT)):
                         print "\tPort {0} open on {1}".format(HOST_CHECK_PORT, host)
-                        # check if the /.well-known/ directory isn't returning a 301 redirect
+                        # check if the /.well-known/acme-challenge/ directory isn't returning a 301 redirect
                         # this is caused by the rancher load balancer not picking up the lets-encrypt service
                         # and not directing traffic to it. Instead the redirection service gets the requests and returns
                         # a 301 redirect. Also, if we get a 503 service unavailable status code there is no lets-encrypt nginx
                         # container working, and we should continue to wait and NOT requests Let's Encrypt certificates yet.
-                        url = "http://{0}/.well-known/:{1}".format(host, HOST_CHECK_PORT)
+                        url = "http://{0}/.well-known/acme-challenge/:{1}".format(host, HOST_CHECK_PORT)
                         r = requests.get(url, allow_redirects=False)
                         if(r.status_code != 503 and r.status_code != 301):
                             print "\t\tOK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
