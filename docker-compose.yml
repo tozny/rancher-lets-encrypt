@@ -9,7 +9,7 @@ letsencrypt-nginx:
 
 rancher-lets-encrypt:
   tty: true
-  image: rancher-lets-encrypt
+  image: tozny/rancher-lets-encrypt
   stdin_open: true
   env_file:
     - letsencrypt.env
