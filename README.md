@@ -57,3 +57,8 @@ This flowchart/execution diagram shows all the cases the service deals with, and
     - no local copy of cert
         - create cert
         - push to rancher
+
+## TODO
+
+Add a timeout to certbot callouts, possibly by porting to python 3 (python 3 subprocess has a timeout API), or
+switch to an approach that doesn't involve invoking an external process.

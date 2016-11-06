@@ -1,6 +1,6 @@
 #! /usr/bin/env python2.7
 
-# This python service is reponsible for managing lets encrypt certificates.
+# This python service is responsible for managing lets encrypt certificates.
 
 import time
 import socket
@@ -9,8 +9,12 @@ import os
 import subprocess
 import json
 import requests
+import uuid
+import errno
 from OpenSSL import crypto
 from requests.auth import HTTPBasicAuth
+from sets import Set
+from random import shuffle
 
 try:
     RANCHER_URL = os.environ['CATTLE_URL']
@@ -23,8 +27,7 @@ try:
     CERTBOT_WEBROOT = os.environ['CERTBOT_WEBROOT']
     CERTBOT_EMAIL = os.environ['CERTBOT_EMAIL']
     STAGING = os.environ['STAGING'] == "True"
-    HOST_CHECK_LOOP_TIME = int(os.environ['HOST_CHECK_LOOP_TIME'])
-    HOST_CHECK_PORT = int(os.environ['HOST_CHECK_PORT'])
+    DYNAMIC_CONFIG = os.environ['DYNAMIC_CONFIG'] == "True"
 
 except KeyError as e:
     print "Could not find an Environment variable set."
@@ -32,6 +35,39 @@ except KeyError as e:
 
 
 class RancherService:
+
+    def __init__(self):
+        user_agent = "rancher-lets-encrypt/0.1"
+
+        self.headers_want_json = {
+            'User-Agent': user_agent,
+            'Accept': 'application/json'
+        }
+        self.headers_sending_json = {
+            'User-Agent': user_agent,
+            'Content-Type': 'application/json'
+        }
+        self.headers = {
+            'User-Agent': user_agent
+        }
+        self.static_domains = Set()
+        self.internal_challenge_value = str(uuid.uuid4())
+
+    def initialize(self):
+        if DOMAINS != '':
+            for domain in DOMAINS.split(','):
+                self.static_domains.add(domain)
+        self.acme_challenge_write()
+
+    def acme_challenge_write(self):
+        acme_directory = CERTBOT_WEBROOT + "/.well-known/acme-challenge"
+        try:
+            os.makedirs(acme_directory)
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise exc
+        with open(acme_directory + '/index.html', 'w') as acme_index_file:
+            print >>acme_index_file, self.internal_challenge_value
 
     def auth(self):
         '''
@@ -44,7 +80,7 @@ class RancherService:
         return json(python dict) of of certificate listing api endpoint
         '''
         url = "{0}/certificate".format(RANCHER_URL)
-        r = requests.get(url=url, auth=self.auth())
+        r = requests.get(url=url, auth=self.auth(), headers=self.headers, timeout=60)
         return r.json()['data']
 
     def get_issuer_for_certificates(self):
@@ -59,11 +95,11 @@ class RancherService:
         certificates = self.get_certificate()
         for cert in certificates:
             server = cert['CN']
-            if(server in issuers):
+            if server in issuers:
                 # we have duplicate certs, so we need to decide which cert is the latest one.
                 prev_cert_created = int(issuers[server]['created'])
                 next_cert_created = int(cert['createdTS'])
-                if(next_cert_created - prev_cert_created < 0):
+                if next_cert_created - prev_cert_created < 0:
                     # previous cert is newer, so keep that one
                     # nothing changes
                     continue
@@ -80,17 +116,16 @@ class RancherService:
 
     def rancher_certificate_expired(self, server):
         returned_json = self.get_certificate()
-        current_time = int(time.time())
         for certificate in returned_json:
             cn = certificate['CN']
-            if(server == cn):
+            if server == cn:
                 # found the cert we want to verify
                 expires_at = certificate['expiresAt']
                 timestamp = datetime.strptime(expires_at, '%a %b %d %H:%M:%S %Z %Y')
                 expiry = int(timestamp.strftime("%s"))
                 print "Found cert: {0}, Expiry: {1}".format(cn, expiry)
                 now = int(time.time())
-                if(self.expiring(expiry)):
+                if self.expiring(expiry):
                     return True
                 else:
                     return False
@@ -104,7 +139,7 @@ class RancherService:
         '''
         print "Deleting {0} cert from Rancher API".format(server)
         url = "{0}/projects/{1]/certificates/{2}".format(RANCHER_URL, self.get_project_id(), self.get_certificate_id(server))
-        r = requests.delete(url=url, auth=self.auth())
+        r = requests.delete(url=url, auth=self.auth(), headers=self.headers, timeout=60)
         print "Delete cert status code: {0}".format(r.status_code)
         print "Sleeping for two minutes because rancher sucks and takes FOREVER to purge a deleted certificate"
         time.sleep(120)
@@ -146,11 +181,18 @@ class RancherService:
         fullchain = '{0}/fullchain.pem'.format(cert_dir)
         return (os.path.isdir(cert_dir) and os.path.isfile(cert) and os.path.isfile(privkey) and os.path.isfile(fullchain))
 
-    def loop(self):
+    def cert_manager_loop(self):
         while True:
             self.cert_manager()
             print "Sleeping: {0} seconds...".format(LOOP_TIME)
             time.sleep(LOOP_TIME)
+
+    def domains_to_manage(self):
+        domains = list(self.static_domains.union(self.get_dynamic_domains()))
+        # Randomize the order in which we handle domains, that way if some domains cause problems
+        # other domains may still get a chance to run before a domain which causes problems
+        shuffle(domains)
+        return domains
 
     def cert_manager(self):
         '''
@@ -161,16 +203,16 @@ class RancherService:
         This is where almost all of the logic of the service is for cert issuance, renewal,
         and rancher cert management.
         '''
-        servers = self.parse_servernames()
+        servers = self.domains_to_manage()
         rancher_cert_servers = self.get_rancher_certificate_servers()
         issuers = self.get_issuer_for_certificates()
         for server in servers:
-            if(self.check_cert_files_exist(server)):
+            if self.check_cert_files_exist(server):
                 # local copy of cert
                 if server not in rancher_cert_servers:
                     # cert not in rancher
                     cert = self.read_cert(server)
-                    if(self.local_cert_expired(cert)):
+                    if self.local_cert_expired(cert):
                         # local copy (expired cert)
                         self.create_cert(server)
                         self.post_cert(server)
@@ -180,23 +222,25 @@ class RancherService:
                 else:
                     # cert in rancher
                     server_cert_issuer = issuers[server]['issuer']
-                    if("Fake" in server_cert_issuer and not STAGING):
+                    if "Fake" in server_cert_issuer and not STAGING:
                         # upgarde staging cert to production
                         print "Upgrading staging cert to production for {0}".format(server)
                         self.create_cert(server)
                         self.post_cert(server)
 
-                    elif("X3" not in server_cert_issuer and not STAGING):
+                    elif("Let's Encrypt Authority X3" not in server_cert_issuer and
+                         "Let's Encrypt Authority X4" not in server_cert_issuer and
+                         not STAGING):
                         # we have a self-signed certificate we should replace with a prod certificate.
                         # this should only happen once on initial rancher install.
                         print "Replacing self-signed certificate: {0}, {1} with production LE cert".format(server, server_cert_issuer)
                         self.create_cert(server)
                         self.post_cert(server)
 
-                    elif(self.rancher_certificate_expired(server)):
+                    elif self.rancher_certificate_expired(server):
                         # rancher cert expired
                         cert = self.read_cert(server)
-                        if(self.local_cert_expired(cert)):
+                        if self.local_cert_expired(cert):
                             # local cert expired
                             self.create_cert(server)
                             self.post_cert(server)
@@ -210,13 +254,20 @@ class RancherService:
 
     def create_cert(self, server):
         print "need to create cert for {0}".format(server)
-        # TODO this is incredibly hacky. Certbot is python code so there should be a way to do this without shelling out to the cli certbot tool. (certbot docs suck btw)
+        if self.acme_challenge_failed(server):
+            return
+
+        # TODO this is incredibly hacky. Certbot is python code so there should be a way to do this without shelling
+        # out to the cli certbot tool. (certbot docs suck btw)
         # https://www.metachris.com/2015/12/comparison-of-10-acme-lets-encrypt-clients/#client-simp_le maybe?
         if(STAGING):
-            proc = subprocess.Popen(["certbot", "certonly", "--webroot", "-w", CERTBOT_WEBROOT, "--text", "-d", server, "-m", CERTBOT_EMAIL, "--agree-tos", "--renew-by-default", "--staging"], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(["certbot", "certonly", "--webroot", "-w", CERTBOT_WEBROOT, "--text", "-d", server,
+                                     "-m", CERTBOT_EMAIL, "--agree-tos", "--renew-by-default", "--staging"],
+                                    stdout=subprocess.PIPE)
         else:
             # production
-            proc = subprocess.Popen(["certbot", "certonly", "--webroot", "-w", CERTBOT_WEBROOT, "--text", "-d", server, "-m", CERTBOT_EMAIL, "--agree-tos", "--renew-by-default"], stdout=subprocess.PIPE)
+            proc = subprocess.Popen(["certbot", "certonly", "--webroot", "-w", CERTBOT_WEBROOT, "--text", "-d", server,
+                                     "-m", CERTBOT_EMAIL, "--agree-tos", "--renew-by-default"], stdout=subprocess.PIPE)
         # wait for the process to return
         com = proc.communicate()[0]
         # read cert in from file
@@ -244,7 +295,13 @@ class RancherService:
         '''
         POST a certificate to the Rancher API.
         '''
-        # check if the cert exists in Rancher first.
+        if not self.check_cert_files_exist(server):
+            print "Could not find cert files for " + server + " inside post_cert method!"
+            return
+        if self.local_cert_expired(self.read_cert(server)):
+            print "Wanted to push a certificate for " + server + " to rancher, but it was already expired :("
+
+        # check if the cert exists in Rancher.
         cert_id = self.get_certificate_id(server)
         if(cert_id is not None):
             # the cert exists in rancher, do PUT to update it
@@ -255,24 +312,21 @@ class RancherService:
             url = "{0}/projects/{1}/certificate".format(RANCHER_URL, self.get_project_id())
             request_type = requests.post
 
-        if(self.check_cert_files_exist(server)):
-            json_structure = {}
-            json_structure['certChain'] = self.read_fullchain(server)
-            json_structure['cert'] = self.read_cert(server)
-            json_structure['key'] = self.read_privkey(server)
-            json_structure['type'] = 'certificate'
-            json_structure['name'] = server
-            json_structure['created'] = None
-            json_structure['description'] = None
-            json_structure['kind'] = None
-            json_structure['removed'] = None
-            json_structure['uuid'] = None
+        json_structure = {}
+        json_structure['certChain'] = self.read_fullchain(server)
+        json_structure['cert'] = self.read_cert(server)
+        json_structure['key'] = self.read_privkey(server)
+        json_structure['type'] = 'certificate'
+        json_structure['name'] = server
+        json_structure['created'] = None
+        json_structure['description'] = None
+        json_structure['kind'] = None
+        json_structure['removed'] = None
+        json_structure['uuid'] = None
 
-            headers = {'Content-Type': 'application/json'}
-            r = request_type(url=url, data=json.dumps(json_structure), headers=headers, auth=self.auth())
-            print "HTTP status code: {0}".format(r.status_code)
-        else:
-            print "Could not find cert files inside post_cert method!"
+        r = request_type(url=url, data=json.dumps(json_structure), headers=self.headers_sending_json, auth=self.auth(),
+                         timeout=60)
+        print "HTTP status code: {0}".format(r.status_code)
 
     def get_project_id(self):
         '''
@@ -280,7 +334,7 @@ class RancherService:
         --> /projects/1a5/certificate
         '''
         url = "{0}/projects".format(RANCHER_URL)
-        r = requests.get(url=url, auth=self.auth())
+        r = requests.get(url=url, auth=self.auth(), headers=self.headers, timeout=60)
         j = r.json()
         return j['data'][0]['id']
 
@@ -328,9 +382,6 @@ class RancherService:
             print "Could not find file: {0}".format(fullchain_file)
             return None
 
-    def parse_servernames(self):
-        return DOMAINS.split(',')
-
     def get_rancher_certificate_servers(self):
         '''
         Retrieve a list of CN's of certificates in the Rancher UI.
@@ -343,52 +394,50 @@ class RancherService:
                 cns.append(certificate['CN'])
         return cns
 
-    def hostname_resolves(self, host):
+    def acme_challenge_failed(self, host):
+        self.acme_challenge_write()
+        url = "http://{0}/.well-known/acme-challenge/".format(host)
         try:
-            socket.gethostbyname(host)
+            r = requests.get(url, headers=self.headers, timeout=60)
+        except:
             return True
-        except socket.error:
+        if r.content.startswith(self.internal_challenge_value):
+            print "ACME challenge pre-test succeeded, using certbot to get certificate for " + host
             return False
+        else:
+            print "ACME challenge pre-test failed, check that " + host + " is routed correctly."
+            return True
 
-    def port_open(self, host, port):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        result = sock.connect_ex((host, port))
-        return result is 0
+    def get_dynamic_domains(self):
+        if not DYNAMIC_CONFIG:
+            return Set()
 
-    def check_hostnames_and_ports(self):
-        done = False
-        while not done:
-            # something failed since we are not done
-            print "Sleeping during host lookups for {0} seconds".format(HOST_CHECK_LOOP_TIME)
-            time.sleep(HOST_CHECK_LOOP_TIME)
-            # make sure all hostnames can be resolved and are listening on open ports
-            for host in self.parse_servernames():
-                if(self.hostname_resolves(host)):
-                    print "Hostname: {0} resolves".format(host)
-                    if(self.port_open(host, HOST_CHECK_PORT)):
-                        print "\tPort {0} open on {1}".format(HOST_CHECK_PORT, host)
-                        # check if the /.well-known/acme-challenge/ directory isn't returning a 301 redirect
-                        # this is caused by the rancher load balancer not picking up the lets-encrypt service
-                        # and not directing traffic to it. Instead the redirection service gets the requests and returns
-                        # a 301 redirect. Also, if we get a 503 service unavailable status code there is no lets-encrypt nginx
-                        # container working, and we should continue to wait and NOT requests Let's Encrypt certificates yet.
-                        url = "http://{0}/.well-known/acme-challenge/:{1}".format(host, HOST_CHECK_PORT)
-                        r = requests.get(url, allow_redirects=False)
-                        if(r.status_code != 503 and r.status_code != 301):
-                            print "\t\tOK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
-                            done = True
-                        else:
-                            print "\t\tReceived bad HTTP status code ({0}) from ({1})".format(r.status_code, host)
-                            done = False
-                    else:
-                        print "Could not connect to port {0} on host {1}".format(HOST_CHECK_PORT, host)
-                        done = False
-                else:
-                    print "Could not lookup hostname for {0}".format(host)
-                    done = False
-        print "continuing on to letsencrypt cert provisioning since all hosts seem to be up!"
+        url = 'http://rancher-metadata.rancher.internal/2015-12-19/containers'
+        try:
+            r = requests.get(url, headers=self.headers_want_json, timeout=60)
+        except:
+            print "Failed to fetch rancher metadata"
+            return []
+        try:
+            parsed_json = r.json()
+        except:
+            print "Failed to parse rancher metadata JSON"
+            return []
+
+        host_list = Set()
+        for service in parsed_json:
+            if 'labels' in service and 'com.danieldent.rancher-lets-encrypt.hosts' in service['labels']:
+                for host in service['labels']['com.danieldent.rancher-lets-encrypt.hosts'].encode('ascii', 'ignore').split(','):
+                    host_list.add(host)
+
+        return host_list
 
 if __name__ == "__main__":
     service = RancherService()
-    service.check_hostnames_and_ports()
-    service.loop()
+    service.initialize()
+    try:
+        service.cert_manager_loop()
+    except requests.exceptions.Timeout:
+        print "A request timed out, re-starting loop"
+        pass
+
