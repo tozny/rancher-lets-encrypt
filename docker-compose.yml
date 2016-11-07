@@ -1,15 +1,20 @@
 letsencrypt-nginx:
   tty: true
   image: nginx:alpine
+  restart: always
   stdin_open: true
+  expose:
+    - "80"
   volumes:
     - letsencrypt-verify:/usr/share/nginx/html/
   labels:
     io.rancher.sidekicks: rancher-lets-encrypt
+    com.danieldent.rancher-nginx-active-lb.acme-host: True
 
 rancher-lets-encrypt:
   tty: true
-  image: rancher-lets-encrypt
+  image: $CI_REGISTRY_IMAGE:sha-$CI_BUILD_REF
+  restart: always
   stdin_open: true
   env_file:
     - letsencrypt.env

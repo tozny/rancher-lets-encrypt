@@ -1,0 +1,30 @@
+
+stages:
+  - build
+  - deploy
+
+image: danieldent/docker-builder
+
+build:
+  stage: build
+  services:
+    - docker:dind
+  script:
+    - docker version
+    - docker info
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+    - docker build ${DOCKER_BUILD_ARGS} --force-rm --no-cache --pull -t ci-${CI_BUILD_ID} .
+    - gitlab-ci-docker-retag.sh ci-${CI_BUILD_ID} $CI_REGISTRY_IMAGE 1 1 master
+
+deploy:
+  stage: deploy
+  environment:
+    name: $CI_BUILD_REF_NAME
+  only:
+    - /^env-.*$/
+  tags:
+    - deploy
+# Not currently supported, see https://gitlab.com/gitlab-org/gitlab-ce/issues/24207
+#    - $CI_BUILD_REF_NAME
+  script:
+    - rancher-compose up -d -u

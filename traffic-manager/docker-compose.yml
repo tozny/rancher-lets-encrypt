@@ -6,7 +6,7 @@ traffic-manager-80:
   labels:
     io.rancher.scheduler.global: 'true'
     io.rancher.loadbalancer.target.redirect/redirect: yourdomain.example.com:80=80
-    io.rancher.loadbalancer.target.lets-encrypt/letsencrypt-nginx: yourdomain.example.com:80/.well-known/=80,anotherdomain.example.com:80/.well-known/=80
+    io.rancher.loadbalancer.target.lets-encrypt/letsencrypt-nginx: yourdomain.example.com:80/.well-known/acme-challenge/=80,anotherdomain.example.com:80/.well-known/acme-challenge/=80
   tty: true
   image: rancher/load-balancer-service
   stdin_open: true

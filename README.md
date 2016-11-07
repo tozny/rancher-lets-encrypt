@@ -12,9 +12,9 @@ With our environment, we wanted to do webroot verification for Let's Encrypt and
 
 The service launches two containers:
 - `letsencrypt-nginx`
-- `letsencrypt-python`
+- `rancher-lets-encrypt`
 
-The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `letsencrypt-python` service container. This way the `letsencrypt-python` container can add ACME challenges to the `<host>/.well-known/acme-challenges/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime. 
+The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `rancher-lets-encrypt` service container. This way the `rancher-lets-encrypt` container can add ACME challenges to the `<host>/.well-known/acme-challenge/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime. 
 
 ## Requirements
 
@@ -24,7 +24,16 @@ The `letsencrypt-nginx` container is stock nginx, but shares the webroot with th
 
 ## How to use
 
-Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. Use `rancher-compose up` to launch the stack in rancher. **In order to get a Let's Encrypt Production certificate, you must set the environment variable STAGING=False**. This will then tell the service to use the production Let's Encrypt api instead of the staging api.
+Use Rancher's built in load balancing, and create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/acme-challenge/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. Use `rancher-compose up` to launch the stack in rancher. **In order to get a Let's Encrypt Production certificate, you must set the environment variable STAGING=False**. This will then tell the service to use the production Let's Encrypt api instead of the staging api.
+
+There are two ways to configure the list of domains for which this service will obtain certificates. It can be
+statically configured with the DOMAINS environment variable. The service will also read the 
+`com.danieldent.rancher-lets-encrypt.hosts` label of other services in the environment.
+
+For example, if a service is created in the same rancher environment as this service with the
+`com.danieldent.rancher-lets-encrypt.hosts` label set to `example.com,example.net`, this service will observe
+the existence of that label and add `example.com` and `example.net` to the list of domains for which it will
+automatically obtain and renew certificates.
 
 # Certificate Workflows
 
@@ -57,3 +66,10 @@ This flowchart/execution diagram shows all the cases the service deals with, and
     - no local copy of cert
         - create cert
         - push to rancher
+
+# TODO
+
+   * Add a timeout to certbot callouts, possibly by porting to python 3 (python 3 subprocess has a timeout API), or
+switch to an approach that doesn't involve invoking an external process.
+   * Integrate with Vault or another system to have a better method for sharing private keys (Rancher's API doesn't currently like exporting private keys)
+   * Refactor and simplify cert_manager() logic
