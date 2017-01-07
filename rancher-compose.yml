@@ -1,5 +1,0 @@
-letsencrypt-nginx:
-  scale: 1
-
-rancher-lets-encrypt:
-  scale: 1

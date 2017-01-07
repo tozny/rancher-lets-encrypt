@@ -1,0 +1,70 @@
+version: '2'
+catalog:
+  name: Rancher Let's Encrypt Service
+  version: 0.1.0
+  description: Automatically create and manage certificates in Rancher using Let's Encrypt webroot verification.
+  minimum_rancher_version: v1.1.0
+  questions:
+    - variable: DOMAINS
+      label: Domain Names
+      description: |
+        Comma delimited list of the certificate domains.
+        E.g: `example.com, dev.example.com`.
+      required: true
+      type: string
+    - variable: CERTBOT_WEBROOT
+      label: Certbot Webroot
+      description: |
+        Webroot to be used by certbot
+      required: true
+      default: /var/www
+      type: string
+    - variable: CERTBOT_EMAIL
+      label: Your Email Address
+      description: |
+        Enter the email address to use for creating the Let's Encrypt account.
+      required: true
+      type: string
+    - variable: RENEW_BEFORE_DAYS
+      label: Renew Before Days
+      description: |
+        Number of days left until certificate expiry before the certificate should be renewed
+      required: true
+      default: 14
+      type: int
+    - variable: LOOP_TIME
+      label: Loop Time
+      description: |
+        Time between each renewal check
+      required: true
+      default: 300
+      type: int
+    - variable: STAGING
+      label: Staging API Environment
+      description: |
+        Should the staging API environment be used for issuing the certificate?
+        (Staging should be used for testing purposes only!)
+      required: true
+      default: true
+      type: boolean
+    - variable: HOST_CHECK_PORT
+      label: Host Check Port
+      description: |
+        The port on which the loadbalancer expects the requests to the letsencrypt-service.
+      required: true
+      default: 80
+      type: int
+    - variable: HOST_CHECK_LOOP_TIME
+      label: Host Check Loop Time
+      description: |
+        Time to sleep before each host check.
+      required: true
+      default: 10
+      type: int
+
+services:
+  letsencrypt-nginx:
+    scale: 1
+
+  rancher-lets-encrypt:
+    scale: 1
