@@ -144,7 +144,8 @@ class RancherService:
         cert = '{0}/cert.pem'.format(cert_dir)
         privkey = '{0}/privkey.pem'.format(cert_dir)
         fullchain = '{0}/fullchain.pem'.format(cert_dir)
-        return (os.path.isdir(cert_dir) and os.path.isfile(cert) and os.path.isfile(privkey) and os.path.isfile(fullchain))
+        chain = '{0}/chain.pem'.format(cert_dir)
+        return (os.path.isdir(cert_dir) and os.path.isfile(cert) and os.path.isfile(privkey) and os.path.isfile(chain) and os.path.isfile(fullchain))
 
     def loop(self):
         while True:
@@ -257,7 +258,7 @@ class RancherService:
 
         if(self.check_cert_files_exist(server)):
             json_structure = {}
-            json_structure['certChain'] = self.read_fullchain(server)
+            json_structure['certChain'] = self.read_chain(server)
             json_structure['cert'] = self.read_cert(server)
             json_structure['key'] = self.read_privkey(server)
             json_structure['type'] = 'certificate'
@@ -326,6 +327,20 @@ class RancherService:
             return fullchain
         else:
             print "Could not find file: {0}".format(fullchain_file)
+            return None
+
+    def read_chain(self, server):
+        '''
+        Read chain.pem file from letsencrypt directory.
+        and return the contents as a string
+        '''
+        chain_file = "/etc/letsencrypt/live/{0}/{1}".format(server, "chain.pem")
+        if(os.path.isfile(chain_file)):
+            with open(chain_file, 'r') as openfile:
+                chain = openfile.read().rstrip('\n')
+            return chain
+        else:
+            print "Could not find file: {0}".format(chain_file)
             return None
 
     def parse_servernames(self):
