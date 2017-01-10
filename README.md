@@ -24,7 +24,23 @@ The `letsencrypt-nginx` container is stock nginx, but shares the webroot with th
 
 ## How to use
 
-Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. Use `rancher-compose up` to launch the stack in rancher. **In order to get a Let's Encrypt Production certificate, you must set the environment variable STAGING=False**. This will then tell the service to use the production Let's Encrypt api instead of the staging api.
+Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. 
+
+#### Rancher Compose
+
+Use `rancher-compose up` to launch the stack in rancher. **In order to get a Let's Encrypt Production certificate, you must set the environment variable STAGING=False**. This will then tell the service to use the production Let's Encrypt api instead of the staging api.
+To use the environment file, you need to pass the path using the `--env-file` or `-e` option.
+
+#### Rancher Catalog (UI)
+
+Add this repository as a catalog to your rancher instance:
+1. Open Rancher
+2. Select *Admin* in the navigation
+3. Select *Settings*
+
+In the *Catalog* section you can add this catalog by entering a name (e.g. `rancher-lets-encrypt`), the URL to this repository and a branch.
+
+Afterwards you will be able to select the new catalog from the `Catalog` menu item in the navigation. There you will find the `Rancher Let's Encrypt Service`. By clicking **View Details** you can configure the service to your needs and then launch it.
 
 # Certificate Workflows
 

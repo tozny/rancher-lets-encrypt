@@ -1,0 +1,8 @@
+name: Rancher Let's Encrypt Service
+description: |
+  Automatically create and manage certificates in Rancher using Let's Encrypt webroot verification.
+version: 0.1.0
+category: Certificates
+maintainer: Tozny <info@tozny.com>
+license: MIT
+projectURL: https://github.com/tozny/rancher-lets-encrypt
