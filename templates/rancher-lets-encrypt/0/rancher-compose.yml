@@ -8,8 +8,8 @@ catalog:
     - variable: DOMAINS
       label: Domain Names
       description: |
-        Comma delimited list of the certificate domains.
-        E.g: `example.com, dev.example.com`.
+        Comma delimited list of the certificate domains (without spaces).
+        E.g: `example.com,dev.example.com,test.example.com`.
       required: true
       type: string
     - variable: CERTBOT_WEBROOT
