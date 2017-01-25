@@ -16,6 +16,28 @@ The service launches two containers:
 
 The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `letsencrypt-python` service container. This way the `letsencrypt-python` container can add ACME challenges to the `<host>/.well-known/acme-challenge/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime. 
 
+#### Example Rancher Load Balancer (HAProxy) GUI Config
+<sup>(Based on Rancher GUI v1.3.3)</sup>
+
+1. Use the "Add Service" dropdown to select "Add Load Balancer" or edit an existing Load Balancer
+2. If empty, fill in the **Name**
+3. Enter the following into the **Port Rules** section for each server for which you are requesting a certificate:
+
+| Access | Protocol | Request Host          | Port | Path          | Target            | Port |
+|--------|----------|-----------------------|------|---------------|-------------------|------|
+| Public | HTTP     | *yourserver.name.com* | 80   | /.well-known/ | letsencrypt-nginx | 80   |
+<sup>Example "Target" is based on the default container name `letsencrypt-nginx` used by this project</sup>
+
+
+*Note: If you are using custom haproxy.cfg settings to redirect http traffic to https (or wish to do so now), make sure to exclude the `/.well-known/` directory using `!{ url_dir /.well-known/ }` as in:*
+
+```
+frontend http-frontend
+  bind *:80
+  mode http
+  redirect scheme https code 302 if !{ url_dir /.well-known/ } !{ ssl_fc }
+```
+
 ## Requirements
 
 - DNS control of domain names (ability to create host.subdomain.domain.com records to point to Rancher IP)
