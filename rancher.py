@@ -387,7 +387,7 @@ class RancherService:
                         # and not directing traffic to it. Instead the redirection service gets the requests and returns
                         # a 301 redirect. Also, if we get a 503 service unavailable status code there is no lets-encrypt nginx
                         # container working, and we should continue to wait and NOT requests Let's Encrypt certificates yet.
-                        url = "http://{0}/.well-known/acme-challenge/:{1}".format(host, HOST_CHECK_PORT)
+                        url = "http://{0}:{1}/.well-known/acme-challenge/".format(host, HOST_CHECK_PORT)
                         r = requests.get(url, allow_redirects=False)
                         if(r.status_code != 503 and r.status_code != 301):
                             print "\t\tOK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
