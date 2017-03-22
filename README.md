@@ -41,12 +41,12 @@ frontend http-frontend
 ## Requirements
 
 - DNS control of domain names (ability to create host.subdomain.domain.com records to point to Rancher IP)
-- Front-end load balancer exposing port 80 to the internet for Let's Encrypt verification
+- Front-end load balancer exposing a privileged port (less than 1024) to the internet for Let's Encrypt verification
 - This Rancher service
 
 ## How to use
 
-Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on port 80. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. 
+Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on your chosen privileged port. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. 
 
 #### Rancher Compose
 
