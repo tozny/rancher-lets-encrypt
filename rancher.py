@@ -494,26 +494,7 @@ class RancherService:
 
                         # at this point the port is open, but it may not respond with a valid http response
                         # so we need to check that it returns a valid http response and the connection can be opened
-
-                        cannot_connect = True
-                        while cannot_connect:
-                            try:
-                                r = requests.get(url, allow_redirects=False, timeout=CONNECT_TIMEOUT)
-                                print "DEBUG: trying connect"
-                            except requests.exceptions.ConnectionError as e:
-                                print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
-                                print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
-                                time.sleep(CONNECT_WAIT)
-                                continue
-                            except requests.exceptions.ConnectTimeout as e:
-                                print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
-                                print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
-                                time.sleep(CONNECT_WAIT)
-                                continue
-                            # can connect, so check we got a valid response code
-                            if(r.status_code):
-                                # we can connect now!
-                                cannot_connect = False
+                        r = requests.get(url, allow_redirects=False, timeout=CONNECT_TIMEOUT)
 
                         if(r.status_code != 503 and r.status_code != 301):
                             print "\t\tINFO: OK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
