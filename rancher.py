@@ -12,6 +12,12 @@ import requests
 from OpenSSL import crypto
 from requests.auth import HTTPBasicAuth
 
+# how long (in seconds) we want to wait for HTTP request to complete before throwing an error
+CONNECT_TIMEOUT = 0.5
+
+# how long to back off connection time before trying request again (in seconds)
+CONNECT_WAIT = 10
+
 try:
     RANCHER_URL = os.environ['CATTLE_URL']
     RANCHER_ACCESS_KEY = os.environ['CATTLE_ACCESS_KEY']
@@ -41,10 +47,27 @@ class RancherService:
 
     def get_certificate(self):
         '''
-        return json(python dict) of of certificate listing api endpoint
+        return json(python dict) of certificate listing api endpoint
         '''
         url = "{0}/certificate".format(RANCHER_URL)
-        r = requests.get(url=url, auth=self.auth())
+        # make sure we loop until we get valid data back from server
+        done = False
+        while not done:
+            try:
+                r = requests.get(url=url, auth=self.auth(), timeout=CONNECT_TIMEOUT)
+            except requests.exceptions.ConnectionError as e:
+                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_certificate", str(e))
+                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                time.sleep(CONNECT_WAIT)
+            except requests.exceptions.ConnectTimeout as e:
+                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_certificate", str(e))
+                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                time.sleep(CONNECT_WAIT)
+            # done with exceptions
+            # if we have a valid status code we should be ok
+            if(r.status_code):
+                done = True
+
         return r.json()['data']
 
     def get_issuer_for_certificates(self):
@@ -104,7 +127,23 @@ class RancherService:
         '''
         print "Deleting {0} cert from Rancher API".format(server)
         url = "{0}/projects/{1]/certificates/{2}".format(RANCHER_URL, self.get_project_id(), self.get_certificate_id(server))
-        r = requests.delete(url=url, auth=self.auth())
+        done = False
+        while not done:
+            try:
+                r = requests.delete(url=url, auth=self.auth(), timeout=CONNECT_TIMEOUT)
+            except requests.exceptions.ConnectionError as e:
+                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "delete_cert", str(e))
+                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                time.sleep(CONNECT_WAIT)
+            except requests.exceptions.ConnectTimeout as e:
+                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "delete_cert", str(e))
+                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                time.sleep(CONNECT_WAIT)
+            # done with exceptions
+            # if we have a valid status code we should be ok
+            if(r.status_code):
+                done = True
+
         print "Delete cert status code: {0}".format(r.status_code)
         print "Sleeping for two minutes because rancher sucks and takes FOREVER to purge a deleted certificate"
         time.sleep(120)
@@ -270,7 +309,23 @@ class RancherService:
             json_structure['uuid'] = None
 
             headers = {'Content-Type': 'application/json'}
-            r = request_type(url=url, data=json.dumps(json_structure), headers=headers, auth=self.auth())
+            done = False
+            while not done:
+                try:
+                    r = request_type(url=url, data=json.dumps(json_structure), headers=headers, auth=self.auth(), timeout=CONNECT_TIMEOUT)
+                except requests.exceptions.ConnectionError as e:
+                    print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "post_cert", str(e))
+                    print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                    time.sleep(CONNECT_WAIT)
+                except requests.exceptions.ConnectTimeout as e:
+                    print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "post_cert", str(e))
+                    print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                    time.sleep(CONNECT_WAIT)
+                # done with exceptions
+                # if we have a valid status code we should be ok
+                if(r.status_code):
+                    done = True
+
             print "HTTP status code: {0}".format(r.status_code)
         else:
             print "Could not find cert files inside post_cert method!"
@@ -281,7 +336,23 @@ class RancherService:
         --> /projects/1a5/certificate
         '''
         url = "{0}/projects".format(RANCHER_URL)
-        r = requests.get(url=url, auth=self.auth())
+        done = False
+        while not done:
+            try:
+                r = requests.get(url=url, auth=self.auth(), timeout=CONNECT_TIMEOUT)
+            except requests.exceptions.ConnectionError as e:
+                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_project_id", str(e))
+                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                time.sleep(CONNECT_WAIT)
+            except requests.exceptions.ConnectTimeout as e:
+                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_project_id", str(e))
+                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                time.sleep(CONNECT_WAIT)
+            # done with exceptions
+            # if we have a valid status code we should be ok
+            if(r.status_code):
+                done = True
+
         j = r.json()
         return j['data'][0]['id']
 
@@ -388,7 +459,27 @@ class RancherService:
                         # a 301 redirect. Also, if we get a 503 service unavailable status code there is no lets-encrypt nginx
                         # container working, and we should continue to wait and NOT requests Let's Encrypt certificates yet.
                         url = "http://{0}:{1}/.well-known/acme-challenge/".format(host, HOST_CHECK_PORT)
-                        r = requests.get(url, allow_redirects=False)
+
+                        # at this point the port is open, but it may not respond with a valid http response
+                        # so we need to check that it returns a valid http response and the connection can be opened
+
+                        cannot_connect = True
+                        while cannot_connect:
+                            try:
+                                r = requests.get(url, allow_redirects=False, timeout=CONNECT_TIMEOUT)
+                            except requests.exceptions.ConnectionError as e:
+                                print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
+                                print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                                time.sleep(CONNECT_WAIT)
+                            except requests.exceptions.ConnectTimeout as e:
+                                print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
+                                print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                                time.sleep(CONNECT_WAIT)
+                            # can connect, so check we got a valid response code
+                            if(r.status_code):
+                                # we can connect now!
+                                cannot_connect = False
+
                         if(r.status_code != 503 and r.status_code != 301):
                             print "\t\tOK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
                             done = True
