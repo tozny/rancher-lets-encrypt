@@ -32,7 +32,7 @@ try:
     # therefore the below are *optional* to set
 
     # how long (in seconds) we want to wait for HTTP request to complete before throwing an error
-    CONNECT_TIMEOUT = int(os.getenv('CONNECT_TIMEOUT', 0.5))
+    CONNECT_TIMEOUT = int(os.getenv('CONNECT_TIMEOUT', 10))
     # how long to back off connection time before trying request again (in seconds)
     CONNECT_WAIT = int(os.getenv('CONNECT_WAIT', 10))
     # how long, in days, before our cert expires should we renew it?
@@ -494,7 +494,25 @@ class RancherService:
 
                         # at this point the port is open, but it may not respond with a valid http response
                         # so we need to check that it returns a valid http response and the connection can be opened
-                        r = requests.get(url, allow_redirects=False)
+
+                        valid_http = False
+                        while not valid_http:
+                            try:
+                                r = requests.get(url, allow_redirects=False)
+                            except requests.exceptions.ConnectionError as e:
+                                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_certificate", str(e))
+                                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                                time.sleep(CONNECT_WAIT)
+                                continue
+                            except requests.exceptions.ConnectTimeout as e:
+                                print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_certificate", str(e))
+                                print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
+                                time.sleep(CONNECT_WAIT)
+                                continue
+                            # done with exceptions
+                            # if we have a valid status code we should be ok
+                            if(r.status_code):
+                                valid_http = True
 
                         if(r.status_code != 503 and r.status_code != 301):
                             print "\t\tINFO: OK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
