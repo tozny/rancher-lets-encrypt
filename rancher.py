@@ -499,6 +499,7 @@ class RancherService:
                         while cannot_connect:
                             try:
                                 r = requests.get(url, allow_redirects=False, timeout=CONNECT_TIMEOUT)
+                                print "DEBUG: trying connect"
                             except requests.exceptions.ConnectionError as e:
                                 print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
                                 print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
