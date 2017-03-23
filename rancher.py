@@ -494,7 +494,7 @@ class RancherService:
 
                         # at this point the port is open, but it may not respond with a valid http response
                         # so we need to check that it returns a valid http response and the connection can be opened
-                        r = requests.get(url, allow_redirects=False, timeout=(CONNECT_TIMEOUT * 4))
+                        r = requests.get(url, allow_redirects=False)
 
                         if(r.status_code != 503 and r.status_code != 301):
                             print "\t\tINFO: OK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
