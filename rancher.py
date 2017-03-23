@@ -33,7 +33,7 @@ try:
     HOST_CHECK_PORT = int(os.environ['HOST_CHECK_PORT'])
 
 except KeyError as e:
-    print "Could not find an Environment variable set."
+    print "ERROR: Could not find an Environment variable set."
     print e
 
 
@@ -113,7 +113,7 @@ class RancherService:
                 expires_at = certificate['expiresAt']
                 timestamp = datetime.strptime(expires_at, '%a %b %d %H:%M:%S %Z %Y')
                 expiry = int(timestamp.strftime("%s"))
-                print "Found cert: {0}, Expiry: {1}".format(cn, expiry)
+                print "INFO: Found cert: {0}, Expiry: {1}".format(cn, expiry)
                 now = int(time.time())
                 if(self.expiring(expiry)):
                     return True
@@ -148,8 +148,8 @@ class RancherService:
             if(r.status_code):
                 done = True
 
-        print "Delete cert status code: {0}".format(r.status_code)
-        print "Sleeping for two minutes because rancher sucks and takes FOREVER to purge a deleted certificate"
+        print "INFO: Delete cert status code: {0}".format(r.status_code)
+        print "INFO: Sleeping for two minutes because rancher sucks and takes FOREVER to purge a deleted certificate"
         time.sleep(120)
 
     def get_certificate_id(self, server):
@@ -176,7 +176,7 @@ class RancherService:
             return False
 
     def renew_certificate(self, server):
-        print "Renewing certificate for {0}".format(server)
+        print "INFO: Renewing certificate for {0}".format(server)
         self.create_cert(server)
 
     def check_cert_files_exist(self, server):
@@ -193,7 +193,7 @@ class RancherService:
     def loop(self):
         while True:
             self.cert_manager()
-            print "Sleeping: {0} seconds...".format(LOOP_TIME)
+            print "INFO: Sleeping: {0} seconds...".format(LOOP_TIME)
             time.sleep(LOOP_TIME)
 
     def cert_manager(self):
@@ -225,15 +225,15 @@ class RancherService:
                     # cert in rancher
                     server_cert_issuer = issuers[server]['issuer']
                     if("Fake" in server_cert_issuer and not STAGING):
-                        # upgarde staging cert to production
-                        print "Upgrading staging cert to production for {0}".format(server)
+                        # upgrade staging cert to production
+                        print "INFO: Upgrading staging cert to production for {0}".format(server)
                         self.create_cert(server)
                         self.post_cert(server)
 
                     elif("X3" not in server_cert_issuer and not STAGING):
                         # we have a self-signed certificate we should replace with a prod certificate.
                         # this should only happen once on initial rancher install.
-                        print "Replacing self-signed certificate: {0}, {1} with production LE cert".format(server, server_cert_issuer)
+                        print "INFO: Replacing self-signed certificate: {0}, {1} with production LE cert".format(server, server_cert_issuer)
                         self.create_cert(server)
                         self.post_cert(server)
 
@@ -253,7 +253,7 @@ class RancherService:
                 self.post_cert(server)
 
     def create_cert(self, server):
-        print "need to create cert for {0}".format(server)
+        print "INFO: Need to create cert for {0}".format(server)
         # TODO this is incredibly hacky. Certbot is python code so there should be a way to do this without shelling out to the cli certbot tool. (certbot docs suck btw)
         # https://www.metachris.com/2015/12/comparison-of-10-acme-lets-encrypt-clients/#client-simp_le maybe?
         if(STAGING):
@@ -266,9 +266,9 @@ class RancherService:
         # read cert in from file
         if proc.returncode == 0:
             # made cert hopefully *crosses fingers*
-            print "certbot seems to have run with exit code 0"
+            print "INFO: certbot seems to have run with exit code 0"
         else:
-            print "an error occured during cert creation."
+            print "INFO: certbot -- an error occured during cert creation. Non-zero Status code ({})".format(proc.returncode)
         # print stdout from subprocess
         print com
 
@@ -332,9 +332,9 @@ class RancherService:
                 if(r.status_code):
                     done = True
 
-            print "HTTP status code: {0}".format(r.status_code)
+            print "INFO: HTTP status code: {0}".format(r.status_code)
         else:
-            print "Could not find cert files inside post_cert method!"
+            print "INFO: Could not find cert files inside post_cert method!"
 
     def get_project_id(self):
         '''
@@ -376,7 +376,7 @@ class RancherService:
                 cert = openfile.read().rstrip('\n')
             return cert
         else:
-            print "Could not find file: {0}".format(cert_file)
+            print "ERROR: Could not find file: {0}".format(cert_file)
             return None
 
     def read_privkey(self, server):
@@ -391,7 +391,7 @@ class RancherService:
                 privkey = openfile.read().rstrip('\n')
             return privkey
         else:
-            print "Could not find file: {0}".format(privkey_file)
+            print "ERROR: Could not find file: {0}".format(privkey_file)
             return None
 
     def read_fullchain(self, server):
@@ -405,7 +405,7 @@ class RancherService:
                 fullchain = openfile.read().rstrip('\n')
             return fullchain
         else:
-            print "Could not find file: {0}".format(fullchain_file)
+            print "ERROR: Could not find file: {0}".format(fullchain_file)
             return None
 
     def read_chain(self, server):
@@ -419,7 +419,7 @@ class RancherService:
                 chain = openfile.read().rstrip('\n')
             return chain
         else:
-            print "Could not find file: {0}".format(chain_file)
+            print "ERROR: Could not find file: {0}".format(chain_file)
             return None
 
     def parse_servernames(self):
@@ -433,7 +433,7 @@ class RancherService:
         cns = []
         for certificate in returned_json:
             if(certificate['state'] == "active"):
-                print "CN: {0} is active".format(certificate['CN'])
+                print "INFO: CN: {0} is active".format(certificate['CN'])
                 cns.append(certificate['CN'])
         return cns
 
@@ -453,14 +453,14 @@ class RancherService:
         done = False
         while not done:
             # something failed since we are not done
-            print "Sleeping during host lookups for {0} seconds".format(HOST_CHECK_LOOP_TIME)
+            print "INFO: Sleeping during host lookups for {0} seconds".format(HOST_CHECK_LOOP_TIME)
             time.sleep(HOST_CHECK_LOOP_TIME)
             # make sure all hostnames can be resolved and are listening on open ports
             for host in self.parse_servernames():
                 if(self.hostname_resolves(host)):
-                    print "Hostname: {0} resolves".format(host)
+                    print "INFO: Hostname: {0} resolves".format(host)
                     if(self.port_open(host, HOST_CHECK_PORT)):
-                        print "\tPort {0} open on {1}".format(HOST_CHECK_PORT, host)
+                        print "\tINFO: Port {0} open on {1}".format(HOST_CHECK_PORT, host)
                         # check if the /.well-known/acme-challenge/ directory isn't returning a 301 redirect
                         # this is caused by the rancher load balancer not picking up the lets-encrypt service
                         # and not directing traffic to it. Instead the redirection service gets the requests and returns
@@ -491,18 +491,18 @@ class RancherService:
                                 cannot_connect = False
 
                         if(r.status_code != 503 and r.status_code != 301):
-                            print "\t\tOK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
+                            print "\t\tINFO: OK, got HTTP status code ({0}) for ({1})".format(r.status_code, host)
                             done = True
                         else:
-                            print "\t\tReceived bad HTTP status code ({0}) from ({1})".format(r.status_code, host)
+                            print "\t\tINFO: Received bad HTTP status code ({0}) from ({1})".format(r.status_code, host)
                             done = False
                     else:
-                        print "Could not connect to port {0} on host {1}".format(HOST_CHECK_PORT, host)
+                        print "INFO: Could not connect to port {0} on host {1}".format(HOST_CHECK_PORT, host)
                         done = False
                 else:
-                    print "Could not lookup hostname for {0}".format(host)
+                    print "INFO: Could not lookup DNS hostname for {0}".format(host)
                     done = False
-        print "continuing on to letsencrypt cert provisioning since all hosts seem to be up!"
+        print "INFO: Continuing on to letsencrypt cert provisioning since all hosts seem to be up!"
 
 if __name__ == "__main__":
     service = RancherService()
