@@ -59,10 +59,12 @@ class RancherService:
                 print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_certificate", str(e))
                 print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                 time.sleep(CONNECT_WAIT)
+                continue
             except requests.exceptions.ConnectTimeout as e:
                 print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_certificate", str(e))
                 print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                 time.sleep(CONNECT_WAIT)
+                continue
             # done with exceptions
             # if we have a valid status code we should be ok
             if(r.status_code):
@@ -135,10 +137,12 @@ class RancherService:
                 print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "delete_cert", str(e))
                 print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                 time.sleep(CONNECT_WAIT)
+                continue
             except requests.exceptions.ConnectTimeout as e:
                 print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "delete_cert", str(e))
                 print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                 time.sleep(CONNECT_WAIT)
+                continue
             # done with exceptions
             # if we have a valid status code we should be ok
             if(r.status_code):
@@ -317,10 +321,12 @@ class RancherService:
                     print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "post_cert", str(e))
                     print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                     time.sleep(CONNECT_WAIT)
+                    continue
                 except requests.exceptions.ConnectTimeout as e:
                     print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "post_cert", str(e))
                     print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                     time.sleep(CONNECT_WAIT)
+                    continue
                 # done with exceptions
                 # if we have a valid status code we should be ok
                 if(r.status_code):
@@ -344,10 +350,12 @@ class RancherService:
                 print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_project_id", str(e))
                 print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                 time.sleep(CONNECT_WAIT)
+                continue
             except requests.exceptions.ConnectTimeout as e:
                 print "ERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "get_project_id", str(e))
                 print "ERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                 time.sleep(CONNECT_WAIT)
+                continue
             # done with exceptions
             # if we have a valid status code we should be ok
             if(r.status_code):
@@ -471,10 +479,12 @@ class RancherService:
                                 print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
                                 print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                                 time.sleep(CONNECT_WAIT)
+                                continue
                             except requests.exceptions.ConnectTimeout as e:
                                 print "\t\tERROR: Cannot connect to URL: {0} for method {1}. Full error: {2}".format(url, "check_hostnames_and_ports", str(e))
                                 print "\t\tERROR: Trying to reconnect in {0} seconds".format(CONNECT_WAIT)
                                 time.sleep(CONNECT_WAIT)
+                                continue
                             # can connect, so check we got a valid response code
                             if(r.status_code):
                                 # we can connect now!
