@@ -11,30 +11,54 @@ import json
 import requests
 from OpenSSL import crypto
 from requests.auth import HTTPBasicAuth
-
-# how long (in seconds) we want to wait for HTTP request to complete before throwing an error
-CONNECT_TIMEOUT = 0.5
-
-# how long to back off connection time before trying request again (in seconds)
-CONNECT_WAIT = 10
+import sys
 
 try:
+    # These variables should all get set as this service is a Rancher Agent
+    # Therefore, Rancher sets these for us.
     RANCHER_URL = os.environ['CATTLE_URL']
     RANCHER_ACCESS_KEY = os.environ['CATTLE_ACCESS_KEY']
     RANCHER_SECRET_KEY = os.environ['CATTLE_SECRET_KEY']
+
+    # list of domains we want certs for, comma-delimited
     DOMAINS = os.environ['DOMAINS']
     # convert renew days -> seconds
-    RENEW_THRESHOLD = int(os.environ['RENEW_BEFORE_DAYS']) * (24 * 60 * 60)
-    LOOP_TIME = int(os.environ['LOOP_TIME'])
-    CERTBOT_WEBROOT = os.environ['CERTBOT_WEBROOT']
+
+    # we are now using os.getenv
+    # the first argument is the environment variable that is set inside the container
+    # if the environment variable is not set, then we use the default, the second arg
+    # this is only used for variables we can have defaults for, such as days
+    # we cannot use this for things like Rancher URL, Access keys, etc.
+    # therefore the below are *optional* to set
+
+    # how long (in seconds) we want to wait for HTTP request to complete before throwing an error
+    CONNECT_TIMEOUT = int(os.getenv('CONNECT_TIMEOUT', 0.5))
+    # how long to back off connection time before trying request again (in seconds)
+    CONNECT_WAIT = int(os.getenv('CONNECT_WAIT', 10))
+    # how long, in days, before our cert expires should we renew it?
+    RENEW_THRESHOLD = int(os.getenv('RENEW_BEFORE_DAYS', 14)) * (24 * 60 * 60)
+    # sleep time before checking certs again
+    LOOP_TIME = int(os.getenv('LOOP_TIME', 300))
+    # Shared webroot directory between Rancher Lets Encrypt service and Nginx container that
+    # serves the ACME requests
+    CERTBOT_WEBROOT = os.getenv('CERTBOT_WEBROOT', '/var/www')
+    # Where the lets encrypt files live, such as certificates, private keys, etc
+    LETSENCRYPT_ROOTDIR = os.getenv('LETSENCRYPT_ROOTDIR', '/etc/letsencrypt')
+    # email to register with letsencrypt with
     CERTBOT_EMAIL = os.environ['CERTBOT_EMAIL']
+    # If this is set to True, we will create a "Dummy" LetsEncrypt certificate. Useful for testing.
+    # If you want production LE certs, Set to "False" Which will get a valid LE signed cert for you.
     STAGING = os.environ['STAGING'] == "True"
+    # how long to wait until we check our domains are up again when doing port/http checks.
     HOST_CHECK_LOOP_TIME = int(os.environ['HOST_CHECK_LOOP_TIME'])
+    # which port to use for LetsEncrypt verification. Defaults to 80.
     HOST_CHECK_PORT = int(os.environ['HOST_CHECK_PORT'])
 
 except KeyError as e:
     print "ERROR: Could not find an Environment variable set."
     print e
+    # exit the service since this failed.
+    sys.exit(1)
 
 
 class RancherService:
@@ -183,7 +207,7 @@ class RancherService:
         '''
         check if certs files already exist on disk. If they are on disk and not in rancher, publish them in rancher.
         '''
-        cert_dir = '/etc/letsencrypt/live/{0}/'.format(server)
+        cert_dir = '{0}/live/{1}/'.format(LETSENCRYPT_ROOTDIR, server)
         cert = '{0}/cert.pem'.format(cert_dir)
         privkey = '{0}/privkey.pem'.format(cert_dir)
         fullchain = '{0}/fullchain.pem'.format(cert_dir)
@@ -274,7 +298,7 @@ class RancherService:
 
     def local_cert_expired(self, cert_string):
         '''
-        if there is a certificate in /etc/letsencrypt, we should check that it is itself valid and not about to expire.
+        if there is a certificate in LETSENCRYPT_ROOTDIR, we should check that it is itself valid and not about to expire.
         '''
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_string)
         timestamp = datetime.strptime(cert.get_notAfter(), "%Y%m%d%H%M%SZ")
@@ -369,7 +393,7 @@ class RancherService:
         Read cert.pem file from letsencrypt directory
         and return the contents as a string
         '''
-        cert_file = "/etc/letsencrypt/live/{0}/{1}".format(server, "cert.pem")
+        cert_file = "{0}/live/{1}/{2}".format(LETSENCRYPT_ROOTDIR, server, "cert.pem")
         if(os.path.isfile(cert_file)):
             # read files and post the correct info to populate rancher
             with open(cert_file, 'r') as openfile:
@@ -384,7 +408,7 @@ class RancherService:
         Read privkey.pem file from letsencrypt directory
         and return the contents as a string
         '''
-        privkey_file = "/etc/letsencrypt/live/{0}/{1}".format(server, "privkey.pem")
+        privkey_file = "{0}/live/{1}/{2}".format(LETSENCRYPT_ROOTDIR, server, "privkey.pem")
         if(os.path.isfile(privkey_file)):
             # read files and post the correct info to populate rancher
             with open(privkey_file, 'r') as openfile:
@@ -399,7 +423,7 @@ class RancherService:
         Read fullchain.pem file from letsencrypt directory.
         and return the contents as a string
         '''
-        fullchain_file = "/etc/letsencrypt/live/{0}/{1}".format(server, "fullchain.pem")
+        fullchain_file = "{0}/live/{1}/{2}".format(LETSENCRYPT_ROOTDIR, server, "fullchain.pem")
         if(os.path.isfile(fullchain_file)):
             with open(fullchain_file, 'r') as openfile:
                 fullchain = openfile.read().rstrip('\n')
@@ -413,7 +437,7 @@ class RancherService:
         Read chain.pem file from letsencrypt directory.
         and return the contents as a string
         '''
-        chain_file = "/etc/letsencrypt/live/{0}/{1}".format(server, "chain.pem")
+        chain_file = "{0}/live/{1}/{2}".format(LETSENCRYPT_ROOTDIR, server, "chain.pem")
         if(os.path.isfile(chain_file)):
             with open(chain_file, 'r') as openfile:
                 chain = openfile.read().rstrip('\n')
