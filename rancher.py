@@ -20,10 +20,13 @@ try:
     RANCHER_ACCESS_KEY = os.environ['CATTLE_ACCESS_KEY']
     RANCHER_SECRET_KEY = os.environ['CATTLE_SECRET_KEY']
 
+    ### These environment variables are required to be set! ###
+    # email to register with letsencrypt with
+    CERTBOT_EMAIL = os.environ['CERTBOT_EMAIL']
     # list of domains we want certs for, comma-delimited
     DOMAINS = os.environ['DOMAINS']
-    # convert renew days -> seconds
 
+    ### These environment variables will be set to defaults if they are not defined! ###
     # we are now using os.getenv
     # the first argument is the environment variable that is set inside the container
     # if the environment variable is not set, then we use the default, the second arg
@@ -44,15 +47,13 @@ try:
     CERTBOT_WEBROOT = os.getenv('CERTBOT_WEBROOT', '/var/www')
     # Where the lets encrypt files live, such as certificates, private keys, etc
     LETSENCRYPT_ROOTDIR = os.getenv('LETSENCRYPT_ROOTDIR', '/etc/letsencrypt')
-    # email to register with letsencrypt with
-    CERTBOT_EMAIL = os.environ['CERTBOT_EMAIL']
     # If this is set to True, we will create a "Dummy" LetsEncrypt certificate. Useful for testing.
     # If you want production LE certs, Set to "False" Which will get a valid LE signed cert for you.
-    STAGING = os.environ['STAGING'] == "True"
+    STAGING = os.getenv('STAGING', "True") == "True"
     # how long to wait until we check our domains are up again when doing port/http checks.
-    HOST_CHECK_LOOP_TIME = int(os.environ['HOST_CHECK_LOOP_TIME'])
+    HOST_CHECK_LOOP_TIME = int(os.getenv('HOST_CHECK_LOOP_TIME', 10))
     # which port to use for LetsEncrypt verification. Defaults to 80.
-    HOST_CHECK_PORT = int(os.environ['HOST_CHECK_PORT'])
+    HOST_CHECK_PORT = int(os.getenv('HOST_CHECK_PORT', 80))
 
 except KeyError as e:
     print "ERROR: Could not find an Environment variable set."
