@@ -43,6 +43,8 @@ frontend http-frontend
 - DNS control of domain names (ability to create host.subdomain.domain.com records to point to Rancher IP)
 - Front-end load balancer exposing a privileged port (less than 1024) to the internet for Let's Encrypt verification
 - This Rancher service
+- Rancher Cattle as Container Scheduler/Orchestrator
+- Rancher v1.1.4 - v1.4.2 (versions tested with this service)
 
 ## How to use
 
