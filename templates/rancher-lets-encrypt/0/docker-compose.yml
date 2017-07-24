@@ -23,7 +23,7 @@ services:
       - HOST_CHECK_LOOP_TIME=${HOST_CHECK_LOOP_TIME}
     volumes:
       - letsencrypt-verify:${CERTBOT_WEBROOT}
-      - letsencrypt-certs:/etc/letsencrypt/
+      - ${CERT_VOLUME}:/etc/letsencrypt/
     labels:
       # if we add the container as a rancher agent, we get magical things like Rancher server URL, and access keys for F-R-E-E!
       io.rancher.container.create_agent: 'true'

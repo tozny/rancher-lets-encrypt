@@ -2,7 +2,7 @@
 
 ## Let's Encrypt verification
 
-Let's Encrypt has two methods of verifying ownership of domains. The first is through the addition of a custom DNS record (say acme-12321313.subdomain.domain.com). This is what https://github.com/janeczku/rancher-letsencrypt does. That service creates Let's Encrypt challenges via DNS resolution. The other way of proving ownership of domains is through a webserver webroot over HTTP. 
+Let's Encrypt has two methods of verifying ownership of domains. The first is through the addition of a custom DNS record (say acme-12321313.subdomain.domain.com). This is what https://github.com/janeczku/rancher-letsencrypt does. That service creates Let's Encrypt challenges via DNS resolution. The other way of proving ownership of domains is through a webserver webroot over HTTP.
 
 ## Our Service
 
@@ -14,7 +14,7 @@ The service launches two containers:
 - `letsencrypt-nginx`
 - `letsencrypt-python`
 
-The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `letsencrypt-python` service container. This way the `letsencrypt-python` container can add ACME challenges to the `<host>/.well-known/acme-challenge/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime. 
+The `letsencrypt-nginx` container is stock nginx, but shares the webroot with the `letsencrypt-python` service container. This way the `letsencrypt-python` container can add ACME challenges to the `<host>/.well-known/acme-challenge/` directory on the webserver for verification. The python container is a sidekick of the nginx container. The containers are launched as a Rancher Service Account, so special environment variables containing the Rancher server API url, and access keys are passed into the container at runtime.
 
 #### Example Rancher Load Balancer (HAProxy) GUI Config
 <sup>(Based on Rancher GUI v1.3.3)</sup>
@@ -32,11 +32,10 @@ The `letsencrypt-nginx` container is stock nginx, but shares the webroot with th
 *Note: If you are using custom haproxy.cfg settings to redirect http traffic to https (or wish to do so now), make sure to exclude the `/.well-known/` directory using `!{ url_dir /.well-known/ }` as in:*
 
 ```
-frontend http-frontend
-  bind *:80
-  mode http
-  redirect scheme https code 302 if !{ url_dir /.well-known/ } !{ ssl_fc }
+frontend 80
+  redirect scheme https code 301 if !{ url_dir /.well-known/ } !{ ssl_fc }
 ```
+<sup>This example custom haproxy.cfg will merge the redirect setting with the default Rancher haproxy.cfg frontend definition and set up permanent ("301") redirects to HTTPS for *all* other HTTP traffic.</sup>
 
 ## Requirements
 
@@ -48,7 +47,7 @@ frontend http-frontend
 
 ## How to use
 
-Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on your chosen privileged port. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container. 
+Create a front end load balancer (or use the one in `traffic-manager` directory). If you are making one, you need to make sure it is a L7 HTTP load balancer on your chosen privileged port. This way the load balancer can redirect /.well-known/\* traffic to the `letsencrypt-nginx` container for verification. You can then route all other traffic to your normal HTTP services. This way only during verification does traffic get directed to the `letsencrypt-nginx` container.
 
 #### Rancher Compose
 

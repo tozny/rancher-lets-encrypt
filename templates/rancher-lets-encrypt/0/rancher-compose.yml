@@ -61,6 +61,14 @@ catalog:
       required: true
       default: 10
       type: int
+    - variable: CERT_VOLUME
+      label: Location to store certificates
+      description: |
+        Docker volume or host bind mount location to store the certificates retrieved by the letsencrypt service.
+        E.g: Docker volume example: 'letsencrypt-certs' or 'ssl-certificates'. Host bind mount example: '/etc/letsencrypt/' or '/dockerdata/letsencrypt/'.
+      required: true
+      default: letsencrypt-certs
+      type: string
 
 services:
   letsencrypt-nginx:
