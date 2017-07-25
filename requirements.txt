@@ -1,4 +1,0 @@
-argcomplete==0.7.0
-requests==2.13.0
-certbot==0.13.0
-pyOpenSSL==0.15
