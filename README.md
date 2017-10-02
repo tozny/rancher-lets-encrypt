@@ -4,6 +4,8 @@
 
 Let's Encrypt has two methods of verifying ownership of domains. The first is through the addition of a custom DNS record (say acme-12321313.subdomain.domain.com). This is what https://github.com/janeczku/rancher-letsencrypt does. That service creates Let's Encrypt challenges via DNS resolution. The other way of proving ownership of domains is through a webserver webroot over HTTP.
 
+*Update:* The [janeczku/rancher-letsencrypt](https://github.com/janeczku/rancher-letsencrypt) [now supports HTTP webroot verification](https://github.com/janeczku/rancher-letsencrypt/commit/2777fcd8eb15fed992a01d41387d2904e010e501). The Tozny project was created many months before this feature was added.
+
 ## Our Service
 
 With our environment, we wanted to do webroot verification for Let's Encrypt and Rancher. We wanted a service that would manage TLS certificates automatically, and renew them as needed. We also wanted this tightly integrated with Rancher for complete automation. This way load balancers (and other services) could automatically pick up certs through the Rancher API. Also, when we update a cert in Rancher, the load balancers will receive the updated cert with zero downtime. We also did not want to give keys for updating DNS records for our entire domain to every rancher environment for security purposes (isolation is best!)
