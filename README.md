@@ -10,6 +10,8 @@ Let's Encrypt has two methods of verifying ownership of domains. The first is th
 
 With our environment, we wanted to do webroot verification for Let's Encrypt and Rancher. We wanted a service that would manage TLS certificates automatically, and renew them as needed. We also wanted this tightly integrated with Rancher for complete automation. This way load balancers (and other services) could automatically pick up certs through the Rancher API. Also, when we update a cert in Rancher, the load balancers will receive the updated cert with zero downtime. We also did not want to give keys for updating DNS records for our entire domain to every rancher environment for security purposes (isolation is best!)
 
+Tozny has been using this service in production for over a year now, and has been battle tested. We renew over 40 subdomains regularly without issue. 
+
 ## How it Works
 
 The service launches two containers:
