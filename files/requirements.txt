@@ -1,6 +1,5 @@
 argcomplete==1.6.0
 requests==2.14.2
-certbot==0.15.0
-acme==0.15.0
+certbot==0.19.0
+acme==0.19.0
 pyOpenSSL==0.15.1
-
