@@ -133,7 +133,7 @@ class RancherService:
             if server == cn:
                 # found the cert we want to verify
                 expires_at = certificate['expiresAt']
-                timestamp = datetime.strptime(expires_at.decode('utf-8'), '%a %b %d %H:%M:%S %Z %Y')
+                timestamp = datetime.strptime(expires_at, '%a %b %d %H:%M:%S %Z %Y')
                 expiry = int(timestamp.strftime("%s"))
                 print("INFO: Found cert: {0}, Expiry: {1}".format(cn, expiry))
                 now = int(time.time())
@@ -306,7 +306,7 @@ class RancherService:
         valid and not about to expire.
         """
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_string)
-        timestamp = datetime.strptime(cert.get_notAfter().decode('utf-8'), "%Y%m%d%H%M%SZ")
+        timestamp = datetime.strptime(cert.get_notAfter(), "%Y%m%d%H%M%SZ")
         expiry = int(timestamp.strftime("%s"))
         if self.expiring(expiry):
             return True
