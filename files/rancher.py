@@ -306,7 +306,7 @@ class RancherService:
         valid and not about to expire.
         """
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert_string)
-        timestamp = datetime.strptime(cert.get_notAfter(), "%Y%m%d%H%M%SZ")
+        timestamp = datetime.strptime(cert.get_notAfter().decode('utf-8'), "%Y%m%d%H%M%SZ")
         expiry = int(timestamp.strftime("%s"))
         if self.expiring(expiry):
             return True
