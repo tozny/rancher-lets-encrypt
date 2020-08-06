@@ -75,7 +75,7 @@ class RancherService:
         """
         return json(python dict) of certificate listing api endpoint
         """
-        url = "{0}/certificate".format(RANCHER_URL)
+        url = "{0}/certificate?limit=1000".format(RANCHER_URL)
         # make sure we loop until we get valid data back from server
         done = False
         while not done:
