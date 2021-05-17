@@ -250,8 +250,9 @@ class RancherService:
                         print("INFO: Upgrading staging cert to production for {0}".format(server))
                         self.create_cert(server)
                         self.post_cert(server)
-
-                    elif "X3" not in server_cert_issuer and not STAGING:
+                    # See below link for list of active and backup cert types
+                    # https://letsencrypt.org/certificates/
+                    elif not STAGING and ("R3" not in server_cert_issuer or "R4" not in server_cert_issuer or "E1" not in server_cert_issuer  or "E2" not in server_cert_issuer):
                         # we have a self-signed certificate we should replace with a prod certificate.
                         # this should only happen once on initial rancher install.
                         print("INFO: Replacing self-signed certificate: {0}, "
