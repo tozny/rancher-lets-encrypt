@@ -252,7 +252,7 @@ class RancherService:
                         self.post_cert(server)
                     # See below link for list of active and backup cert types
                     # https://letsencrypt.org/certificates/
-                    elif not STAGING and ("R3" not in server_cert_issuer or "R4" not in server_cert_issuer or "E1" not in server_cert_issuer  or "E2" not in server_cert_issuer):
+                    elif not STAGING and ("R3" not in server_cert_issuer and "R4" not in server_cert_issuer and "E1" not in server_cert_issuer  and "E2" not in server_cert_issuer):
                         # we have a self-signed certificate we should replace with a prod certificate.
                         # this should only happen once on initial rancher install.
                         print("INFO: Replacing self-signed certificate: {0}, "
